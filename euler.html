@@ -1,0 +1,241 @@
+
+<html>
+<head>
+    <title>Euler's Problem</title>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<h1 id="h" style="position: absolute; left: 43%; top: 40%;">Press space to start</h1>
+<div style="position: absolute; left: 5%; top: 5%;">
+    <span id="l"></span><br>
+    <span id="c"></span>
+</div>
+<h2 style="position: absolute; top: 40px; right: 150px;">Toggle chart</h2><label class="switch"><input id="chart" type="checkbox" checked><span class="slider"></span></label>
+<h2 style="position: absolute; top: 80px; right: 100px; text-align: center;">Set current number
+    <br><input type="number" placeholder="" id="current">
+    <br><button onclick="set_current()">Set</button>
+</h2>
+<script>
+    const _nS = (a, b) => a - b;
+    /*** @type {HTMLCanvasElement} */
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let _simulating = true;
+    let _chart = document.getElementById("chart");
+    canvas.width = window.innerWidth - 2;
+    canvas.height = window.innerHeight - 2;
+    /*** @type {Object<number, number>} */
+    let points = {};
+    const _len_list = {};
+    let _current = 0;
+
+    function generate_euler(num) {
+        document.getElementById("current").placeholder = num;
+        document.getElementById("current").value = num;
+        _chart.blur();
+        document.getElementById("h").hidden = true;
+        const _n = num;
+        points = {};
+        let i = 0;
+        points[i++] = num;
+        while (num > 1) {
+            num % 2 === 0 ? num /= 2 : num = 3 * num + 1;
+            points[i++] = num;
+        }
+        _len_list[_n] = Object.values(points);
+        _current = num;
+        render();
+    }
+
+    function set_current() {
+        _current = document.getElementById("current").value * 1;
+        generate_euler(document.getElementById("current").value * 1);
+    }
+
+    let start_border_x = canvas.height - 50;
+    const start_border_y = 50;
+    let _len = {
+        width: canvas.width - 100,
+        height: canvas.height - 100
+    };
+    let _step = {
+        width: _len.width / Object.keys(points).map(i => i * 1).sort(_nS).reverse()[0],
+        height: _len.height / Object.values(points).sort(_nS).reverse()[0]
+    };
+    setInterval(() => {
+        if(_simulating !== _chart.checked) {
+            _simulating = _chart.checked;
+            if(_simulating) {
+                render();
+            } else ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        let _o = false;
+        if(canvas.width !== window.innerWidth - 2) {
+            canvas.width = window.innerWidth - 2;
+            _o = true;
+        }
+        if(canvas.height !== window.innerHeight - 2) {
+            canvas.height = window.innerHeight - 2;
+            _o = true;
+        }
+        if(_o) render();
+    });
+
+    function draw(fromX, fromY, toX, toY) {
+        const from = {
+            x: (fromX * _step.width) + start_border_y + 1,
+            y: start_border_x - (fromY * _step.height)
+        };
+        const to = {
+            x: (toX * _step.width) + start_border_y + 1,
+            y: start_border_x - (toY * _step.height)
+        };
+        ctx.beginPath();
+        ctx.lineWidth = 3;
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.stroke();
+        ctx.closePath();
+    }
+
+    Object.defineProperty(Array.prototype, "chunk_arr", {
+        value: function (chunkSize) {
+            return [].concat.apply([], this.map((elem, i) => i % chunkSize ? [] : [this.slice(i, i + chunkSize)]));
+        }
+    });
+
+    function calc_pixels(step) {
+        if(step === Infinity) {
+            return 20;
+        } else if(step > 200) {
+            return 18;
+        } else if(step > 150) {
+            return 15;
+        } else if(step > 75) {
+            return 13;
+        } else if(step > 25) {
+            return 10;
+        } else if(step > 10) {
+            return 7;
+        } else if(step > 5) {
+            return 5;
+        } else return 2;
+    }
+
+    function render() {
+        if(!Object.keys(points).length) return;
+        const _longest = Object.keys(_len_list).sort((a, b) => _len_list[a].length * 1 - _len_list[b].length * 1).reverse();
+        document.getElementById("l").innerHTML = `${_longest[0]} is the longest step; ${_len_list[_longest[0]].join(", ")}`;
+        document.getElementById("c").innerHTML = `Current step(${_current}); ${Object.values(points).join(", ")}`;
+        if(!_simulating) return;
+        start_border_x = canvas.height - 50;
+        _len = {
+            width: canvas.width - 100,
+            height: canvas.height - 100
+        };
+        _step = {
+            width: _len.width / Object.keys(points).map(i => i * 1).sort(_nS).reverse()[0],
+            height: _len.height / Object.values(points).sort(_nS).reverse()[0]
+        };
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(start_border_y, start_border_x, canvas.width, 3); // right
+        ctx.fillRect(start_border_y, 0, 3, canvas.height - start_border_y); // down
+        ctx.font = calc_pixels(_step.width) + "px Calibri";
+        for (let x = start_border_y; x <= canvas.width; x += _step.width) {
+            if (x !== start_border_y) {
+                let num = Math.floor((x - start_border_y) / _step.width);
+                ctx.fillText(num.toString(), x - (5 * num.toString().length), start_border_x + 25)
+                ctx.fillRect(x, start_border_x - 3, 3, 12);
+            }
+        }
+        for (let y = _len.height + start_border_y; y >= 0; y -= _step.height) {
+            if (y !== _len.height + start_border_y) {
+                let num = Math.abs(Math.floor((y - (_len.height + start_border_y)) / _step.height));
+                ctx.fillText(num.toString(), start_border_y - 20 - (5 * num.toString().length), y + 5)
+                ctx.fillRect(start_border_y - 3, y, 12, 3);
+            }
+        }
+        let start = null;
+        Object.keys(points).map(i => i * 1).forEach(x => {
+            const y = points[x];
+            if (!start) return start = {x, y};
+            draw(x, y, start.x, start.y);
+            start = {x, y};
+        });
+    }
+    addEventListener("keydown", ev => {
+        if(ev.key === " ") {
+            _current++;
+            generate_euler(_current);
+        }
+    });
+</script>
+<style>
+    * {
+        font-family: Calibri, serif;
+    }
+
+    canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+        border: 1px solid black;
+    }
+
+    .switch {
+        position: absolute;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+        top: 60px;
+        right: 75px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        -webkit-transition: .4s;
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        -webkit-transition: .4s;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #2196F3;
+    }
+
+    input:focus + .slider {
+        box-shadow: 0 0 1px #2196F3;
+    }
+
+    input:checked + .slider:before {
+        -webkit-transform: translateX(26px);
+        -ms-transform: translateX(26px);
+        transform: translateX(26px);
+    }
+</style>
+</body>
+</html>
